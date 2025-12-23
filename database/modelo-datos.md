@@ -1,33 +1,13 @@
 # Modelo de Datos - Gestinventa XLSX
 
-## Productos
-Hoja: productos
+## Ventas
+Hoja: ventas
 
 Campos:
-- id
-- nombre
-- categoria
-- precio
-- stock
-- activo
-- creado_en
-
-## Movimientos
-Hoja: movimientos
-
-Campos:
-- id
-- producto_id
-- tipo (ENTRADA | SALIDA)
-- cantidad
-- motivo
+- id (autoincremental)
 - fecha
-- usuario
-
-## Categorías
-Hoja: categorias
-
-Campos:
-- id
-- nombre
-- descripcion
+- comprador
+- categorias
+- total
+- stock_ok (TRUE | FALSE)
+- estado (REALIZADO | PENDIENTE | RECHAZADO)
