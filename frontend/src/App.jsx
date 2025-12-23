@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { API_URL } from "./config";
 
 export default function App() {
-  const [ventas, setVentas] = useState([]);
+  // ======================
+  // ESTADOS
+  // ======================
   const [form, setForm] = useState({
+    ID: "",
     Fecha: "",
     Comprador: "",
     Categorias: "",
@@ -11,49 +14,60 @@ export default function App() {
     Stock: true,
     Estado: "realizado",
   });
+
+  const [ventas, setVentas] = useState([]);
+  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const cargarVentas = () => {
-    fetch(API_URL)
-      .then((res) => res.json())
-      .then((data) => setVentas(Array.isArray(data) ? data : []))
-      .catch((err) => console.error("Error API:", err));
+  // ======================
+  // GET /ventas
+  // ======================
+  const cargarVentas = async () => {
+    try {
+      const res = await fetch(`${API_URL}/ventas`);
+      const data = await res.json();
+      setVentas(data);
+    } catch (err) {
+      console.error("Error cargando ventas:", err);
+    }
   };
 
   useEffect(() => {
     cargarVentas();
   }, []);
 
-  const onChange = (e) => {
+  // ======================
+  // FORMULARIO
+  // ======================
+  const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
+    setForm({
+      ...form,
       [name]: type === "checkbox" ? checked : value,
-    }));
+    });
   };
 
-  const guardar = async (e) => {
+  // ======================
+  // POST /ventas
+  // ======================
+  const guardarVenta = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    const payload = {
-      ...form,
-      // si no pones fecha, Apps Script pone la actual
-      Fecha: form.Fecha ? new Date(form.Fecha).toISOString() : "",
-      Total: Number(form.Total || 0),
-    };
+    setMsg("");
 
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}/ventas`, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
 
-      const out = await res.json();
-      console.log("POST:", out);
+      if (!res.ok) throw new Error("Error al guardar");
+
+      setMsg("✅ Venta guardada correctamente");
 
       setForm({
+        ID: "",
         Fecha: "",
         Comprador: "",
         Categorias: "",
@@ -62,112 +76,94 @@ export default function App() {
         Estado: "realizado",
       });
 
-      cargarVentas(); // recarga tabla
+      await cargarVentas();
     } catch (err) {
-      console.error("Error POST:", err);
-      alert("Error guardando. Revisa consola.");
+      console.error(err);
+      setMsg("❌ Error guardando la venta");
     } finally {
       setLoading(false);
     }
   };
 
+  // ======================
+  // DELETE /ventas/:id
+  // ======================
+  const eliminarVenta = async (id) => {
+    if (!confirm("¿Eliminar esta venta?")) return;
+
+    try {
+      await fetch(`${API_URL}/ventas/${id}`, {
+        method: "DELETE",
+      });
+
+      await cargarVentas();
+    } catch (err) {
+      console.error("Error eliminando venta:", err);
+    }
+  };
+
+  // ======================
+  // RENDER
+  // ======================
   return (
     <div style={{ padding: 20, maxWidth: 900 }}>
-      <h1>Gestinventa </h1>
+      <h1>Gestinventa</h1>
 
-      <form onSubmit={guardar} style={{ marginBottom: 20 }}>
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(3, 1fr)" }}>
-          <div>
-            <label>Fecha</label>
-            <input
-              type="date"
-              name="Fecha"
-              value={form.Fecha}
-              onChange={onChange}
-              style={{ width: "100%" }}
-            />
-          </div>
+      {/* FORMULARIO */}
+      <form onSubmit={guardarVenta} style={{ marginBottom: 30 }}>
+        <input name="ID" placeholder="ID" value={form.ID} onChange={handleChange} required />
+        <input name="Fecha" type="date" value={form.Fecha} onChange={handleChange} required />
+        <input name="Comprador" placeholder="Comprador" value={form.Comprador} onChange={handleChange} required />
+        <input name="Categorias" placeholder="Categorías" value={form.Categorias} onChange={handleChange} required />
+        <input name="Total" type="number" placeholder="Total" value={form.Total} onChange={handleChange} required />
 
-          <div>
-            <label>Comprador</label>
-            <input
-              name="Comprador"
-              value={form.Comprador}
-              onChange={onChange}
-              placeholder="Juan"
-              style={{ width: "100%" }}
-              required
-            />
-          </div>
+        <label style={{ marginLeft: 10 }}>
+          <input type="checkbox" name="Stock" checked={form.Stock} onChange={handleChange} />
+          Stock
+        </label>
 
-          <div>
-            <label>Categorías</label>
-            <input
-              name="Categorias"
-              value={form.Categorias}
-              onChange={onChange}
-              placeholder="bebidas, snacks"
-              style={{ width: "100%" }}
-              required
-            />
-          </div>
+        <select name="Estado" value={form.Estado} onChange={handleChange}>
+          <option value="realizado">realizado</option>
+          <option value="pendiente">pendiente</option>
+          <option value="rechazado">rechazado</option>
+        </select>
 
-          <div>
-            <label>Total</label>
-            <input
-              type="number"
-              name="Total"
-              value={form.Total}
-              onChange={onChange}
-              placeholder="15"
-              style={{ width: "100%" }}
-              required
-            />
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <input type="checkbox" name="Stock" checked={form.Stock} onChange={onChange} />
-            <label>Stock disponible</label>
-          </div>
-
-          <div>
-            <label>Estado</label>
-            <select name="Estado" value={form.Estado} onChange={onChange} style={{ width: "100%" }}>
-              <option value="realizado">realizado</option>
-              <option value="pendiente">pendiente</option>
-              <option value="rechazado">rechazado</option>
-            </select>
-          </div>
-        </div>
-
-        <button type="submit" disabled={loading} style={{ marginTop: 12 }}>
+        <button type="submit" disabled={loading} style={{ marginLeft: 10 }}>
           {loading ? "Guardando..." : "Guardar venta"}
         </button>
       </form>
 
-      <table border="1" cellPadding="8" style={{ width: "100%" }}>
+      {msg && <p>{msg}</p>}
+
+      {/* TABLA */}
+      <h2>Ventas registradas</h2>
+
+      <table border="1" cellPadding="8" width="100%">
         <thead>
           <tr>
             <th>ID</th>
             <th>Fecha</th>
             <th>Comprador</th>
-            <th>Categorías</th>
+            <th>Categoría</th>
             <th>Total</th>
             <th>Stock</th>
             <th>Estado</th>
+            <th>Acciones</th>
           </tr>
         </thead>
-
         <tbody>
-          {ventas.map((v, i) => (
-            <tr key={i}>
+          {ventas.map((v) => (
+            <tr key={v.ID}>
               <td>{v.ID}</td>
-              <td>{v.Fecha ? new Date(v.Fecha).toLocaleDateString() : ""}</td>
+              <td>{v.Fecha}</td>
               <td>{v.Comprador}</td>
               <td>{v.Categorias}</td>
               <td>{v.Total}</td>
               <td>{v.Stock ? "Sí" : "No"}</td>
               <td>{v.Estado}</td>
+              <td>
+                <button onClick={() => eliminarVenta(v.ID)}>🗑️</button>
+              </td>
             </tr>
           ))}
         </tbody>
